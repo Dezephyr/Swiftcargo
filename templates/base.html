@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-        <meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Favicon (inline SVG, no external file needed) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230d1a26'/><text x='50' y='68' font-size='62' font-weight='900' text-anchor='middle' fill='%2322d3ee' font-family='-apple-system,sans-serif'>S</text></svg>">
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
 
     <!-- Browser + mobile chrome -->
     <meta name="theme-color" content="#05090f">
@@ -18,9 +18,11 @@
     <meta property="og:title" content="SwiftCargo — Reliable shipping, honest tracking">
     <meta property="og:description" content="Track any parcel in real time. Live map updates, honest status, email confirmations.">
     <meta property="og:type" content="website">
+    <meta property="og:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="SwiftCargo — Reliable shipping, honest tracking">
     <meta name="twitter:description" content="Track any parcel in real time. Live map updates, honest status, email confirmations.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/logo.png', _external=True) }}">
 
     <title>{% block title %}SwiftCargo{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -36,26 +38,45 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+
     <!-- Preloader -->
     <div class="preloader" id="preloader" aria-hidden="true">
-        <div class="preloader-stage">
-            <div class="preloader-ring ring-1"></div>
-            <div class="preloader-ring ring-2"></div>
-            <div class="preloader-ring ring-3"></div>
-            <div class="preloader-core">S</div>
-        </div>
-        <div class="preloader-brand">Swift<em>Cargo</em></div>
-        <div class="preloader-status">
-            <span>Loading</span>
-            <span class="preloader-dots"><span>.</span><span>.</span><span>.</span></span>
+        <div class="preloader-scene">
+
+            <!-- Rings + logo core -->
+            <div class="preloader-stage">
+                <div class="preloader-ring ring-1"></div>
+                <div class="preloader-ring ring-2"></div>
+                <div class="preloader-ring ring-3"></div>
+                <div class="preloader-core">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SwiftCargo">
+                </div>
+            </div>
+
+            <!-- Brand + status -->
+            <div class="preloader-brand">Swift<em>Cargo</em></div>
+            <div class="preloader-status">
+                <span>Preparing departure</span>
+                <span class="preloader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+
+            <!-- The big plane (image) -->
+            <div class="preloader-plane" aria-hidden="true">
+                <img src="{{ url_for('static', filename='images/plane.png') }}" alt="">
+            </div>
+
+            <!-- Trail dashes -->
+            <div class="preloader-trail">
+                <span></span><span></span><span></span><span></span>
+            </div>
+
         </div>
     </div>
 
     <nav class="nav">
         <div class="nav-inner">
             <a href="{{ url_for('index') }}" class="nav-brand">
-                <span class="brand-icon">S</span>
-                Swift<em>Cargo</em>
+                <img class="brand-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="SwiftCargo">
             </a>
 
             <div class="nav-links">
@@ -67,7 +88,6 @@
 
             <div class="nav-actions">
                 <a href="{{ url_for('index') }}#track" class="btn btn-secondary">Track</a>
-                
 
                 <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
                     <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -90,8 +110,7 @@
         <div class="footer-inner">
             <div>
                 <a href="{{ url_for('index') }}" class="nav-brand" style="margin-bottom: 14px;">
-                    <span class="brand-icon">S</span>
-                    Swift<em>Cargo</em>
+                    <img class="brand-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="SwiftCargo">
                 </a>
                 <p class="muted" style="max-width: 40ch; line-height: 1.65;">
                     Reliable shipping, honest tracking, and updates you can trust.
@@ -148,34 +167,51 @@
             }, { threshold: 0.12, rootMargin: "0px 0px -60px 0px" });
             els.forEach(function (el) { observer.observe(el); });
         })();
-    </script>
-<script>
-    /* ---------- Preloader ---------- */
-    (function () {
-        var pre = document.getElementById("preloader");
-        if (!pre) return;
 
-        var MIN_MS = 650;
-        var start = Date.now();
+        /* ---------- Preloader: full-screen airplane takeoff ---------- */
+        (function () {
+            var pre = document.getElementById("preloader");
+            if (!pre) return;
 
-        function hide() {
-            var wait = Math.max(0, MIN_MS - (Date.now() - start));
-            setTimeout(function () {
-                pre.classList.add("is-hidden");
+            var START_TAKEOFF = 1200;
+            var TAKEOFF_MS    = 2200;
+            var CLEANUP_MS    = 200;
+
+            var safety    = false;
+            var started   = false;
+
+            document.body.classList.add("preloader-active");
+
+            function beginTakeoff() {
+                if (started) return;
+                started = true;
+
+                pre.classList.add("is-taking-off");
+
                 setTimeout(function () {
                     if (pre.parentNode) pre.parentNode.removeChild(pre);
-                }, 600);
-            }, wait);
-        }
+                    document.body.classList.remove("preloader-active");
+                }, TAKEOFF_MS + CLEANUP_MS);
+            }
 
-        if (document.readyState === "complete") hide();
-        else window.addEventListener("load", hide);
+            function scheduleTakeoff() {
+                setTimeout(beginTakeoff, START_TAKEOFF);
+            }
 
-        // Safety net
-        setTimeout(hide, 6000);
-    })();
-</script>
+            if (document.readyState === "complete") {
+                scheduleTakeoff();
+            } else {
+                window.addEventListener("load", scheduleTakeoff);
+            }
+
+            setTimeout(function () {
+                if (safety || started || !pre.parentNode) return;
+                safety = true;
+                beginTakeoff();
+            }, 5000);
+        })();
+    </script>
+
     {% block scripts %}{% endblock %}
-
 </body>
 </html>
