@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if shipment %}Tracking {{ shipment.tracking_id }} — SwiftCargo{% else %}Not Found — SwiftCargo{% endif %}
+{% endblock %}
+
+{% block head %}
+{% if shipment and (shipment.origin_lat or shipment.destination_lat or shipment.current_lat) %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<section class="section" style="padding-top: 48px;">
+    {% if not shipment %}
+        <a href="{{ url_for('index') }}" class="back-link">← Back to search</a>
+        <h1>Shipment not found</h1>
+        <p class="subtitle" style="font-size: 16px;">No shipment matched "<strong>{{ query }}</strong>".</p>
+        <p class="muted" style="margin-top: 12px;">Double-check the tracking ID (format: <code>SHP-XXXXXX</code>) or try the recipient's email.</p>
+        <div style="margin-top: 28px;">
+            <a href="{{ url_for('index') }}#track" class="btn btn-solid">Try another search</a>
+        </div>
+    {% else %}
+
+        <a href="{{ url_for('index') }}" class="back-link">← Back to search</a>
+
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px;">
+            <h1 style="font-family: var(--mono); letter-spacing: -0.01em;">{{ shipment.tracking_id }}</h1>
+            <span class="status-badge status-{{ shipment.status | lower | replace(' ', '-') }}">
+                {{ shipment.status }}
+            </span>
+        </div>
+
+        <p class="subtitle" style="font-size: 16px; margin-bottom: 4px;">
+    {{ shipment.origin }} <span style="color: var(--text-dimmer);">→</span> {{ shipment.destination }}
+</p>
+<p class="muted" style="font-size: 13px; margin-bottom: 24px;">
+    Last updated {{ shipment.updated_at.strftime("%B %d, %Y at %H:%M") }}
+</p>
+
+        <!-- ============ MAP ============ -->
+        {% if shipment.origin_lat or shipment.destination_lat or shipment.current_lat %}
+            <h2 style="margin-top: 32px; font-size: 18px;">Route</h2>
+            <div id="map" class="map"></div>
+        {% else %}
+    <div class="empty-state" style="margin-top: 28px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center;
+                    width: 48px; height: 48px; border-radius: 50%;
+                    background: var(--accent-soft); color: var(--accent);
+                    margin-bottom: 14px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" style="width: 22px; height: 22px;">
+                <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+        </div>
+        <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px;">
+            Route map coming soon
+        </div>
+        <div style="font-size: 13.5px; color: var(--text-dim); max-width: 44ch; margin: 0 auto; line-height: 1.6;">
+            We'll plot the origin, current position, and destination here once our team
+            logs the first location update.
+        </div>
+    </div>
+{% endif %}
+
+        <!-- ============ DETAILS ============ -->
+        <h2 style="margin-top: 32px; font-size: 18px;">Details</h2>
+        <div class="details">
+            <div><strong>Sender:</strong> {{ shipment.sender_name }}</div>
+            <div><strong>Recipient:</strong> {{ shipment.recipient_name }}</div>
+            <div><strong>Description:</strong> {{ shipment.description or "—" }}</div>
+            <div><strong>Current location:</strong> {{ shipment.current_location_label or "Awaiting update" }}</div>
+            <div><strong>Created:</strong> {{ shipment.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+            <div><strong>Last update:</strong> {{ shipment.updated_at.strftime("%Y-%m-%d %H:%M") }}</div>
+        </div>
+
+        <!-- ============ VIDEO ============ -->
+        {% if shipment.video_filename %}
+            <h2 style="margin-top: 32px; font-size: 18px;">Package video</h2>
+            <video controls class="shipment-video">
+                <source src="{{ url_for('uploaded_file', filename=shipment.video_filename) }}">
+            </video>
+        {% endif %}
+
+        <!-- ============ TIMELINE ============ -->
+        {% if shipment.events %}
+            <h2 style="margin-top: 32px; font-size: 18px;">History</h2>
+            <ul class="timeline">
+                {% for event in shipment.events %}
+                    <li>
+                        <div class="event-status">{{ event.status }}</div>
+                        <div class="event-meta">
+                            {{ event.location or "—" }} • {{ event.timestamp.strftime("%Y-%m-%d %H:%M") }}
+                        </div>
+                        {% if event.note %}<div class="event-note">{{ event.note }}</div>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+    {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+{% if shipment and (shipment.origin_lat or shipment.destination_lat or shipment.current_lat) %}
+<script>
+(function () {
+    /* ---------- Data from server ---------- */
+    var originLat = {{ shipment.origin_lat | tojson }};
+    var originLng = {{ shipment.origin_lng | tojson }};
+    var destLat   = {{ shipment.destination_lat | tojson }};
+    var destLng   = {{ shipment.destination_lng | tojson }};
+    var currLat   = {{ shipment.current_lat | tojson }};
+    var currLng   = {{ shipment.current_lng | tojson }};
+    var originLbl = {{ (shipment.origin or "Origin") | tojson }};
+    var destLbl   = {{ (shipment.destination or "Destination") | tojson }};
+    var currLbl   = {{ (shipment.current_location_label or "Current position") | tojson }};
+
+    /* ---------- Collect valid points ---------- */
+    var points = [];
+    if (originLat && originLng) points.push([originLat, originLng]);
+    if (currLat   && currLng)   points.push([currLat,   currLng]);
+    if (destLat   && destLng)   points.push([destLat,   destLng]);
+
+    if (!points.length) return;
+
+    /* ---------- Init map ---------- */
+    var map = L.map("map", { scrollWheelZoom: false });
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    /* ---------- Fit view to all points ---------- */
+    if (points.length === 1) {
+        map.setView(points[0], 10);
+    } else {
+        map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
+    }
+
+    /* ---------- Custom markers ---------- */
+    function dot(color) {
+        return L.divIcon({
+            className: "",
+            html: '<div style="width:16px;height:16px;border-radius:50%;background:' + color +
+                  ';border:3px solid #05090f;box-shadow:0 0 0 4px ' + color + '33;"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        });
+    }
+
+    /* ---------- Origin marker ---------- */
+    if (originLat && originLng) {
+        L.marker([originLat, originLng], { icon: dot("#22d3ee") })
+            .addTo(map)
+            .bindPopup("<strong>Origin</strong><br>" + originLbl);
+    }
+
+    /* ---------- Destination marker ---------- */
+    if (destLat && destLng) {
+        L.marker([destLat, destLng], { icon: dot("#f87171") })
+            .addTo(map)
+            .bindPopup("<strong>Destination</strong><br>" + destLbl);
+    }
+
+    /* ---------- Current position marker (larger, pulsing) ---------- */
+    if (currLat && currLng) {
+        L.circleMarker([currLat, currLng], {
+            radius: 10,
+            color: "#67e8f9",
+            weight: 3,
+            fillColor: "#22d3ee",
+            fillOpacity: 1
+        })
+        .addTo(map)
+        .bindPopup("<strong>Current position</strong><br>" + currLbl)
+        .openPopup();
+    }
+
+    /* ---------- Dashed route line ---------- */
+    if (originLat && originLng && destLat && destLng) {
+        L.polyline([[originLat, originLng], [destLat, destLng]], {
+            color: "#22d3ee",
+            weight: 2,
+            opacity: 0.55,
+            dashArray: "6 8"
+        }).addTo(map);
+    }
+
+    /* ---------- Optional: line from origin to current ---------- */
+    if (originLat && originLng && currLat && currLng) {
+        L.polyline([[originLat, originLng], [currLat, currLng]], {
+            color: "#22d3ee",
+            weight: 3,
+            opacity: 0.9
+        }).addTo(map);
+    }
+
+    /* ---------- Optional: line from current to destination ---------- */
+    if (currLat && currLng && destLat && destLng) {
+        L.polyline([[currLat, currLng], [destLat, destLng]], {
+            color: "#94a3b8",
+            weight: 2,
+            opacity: 0.5,
+            dashArray: "4 6"
+        }).addTo(map);
+    }
+})();
+</script>
+{% endif %}
+{% endblock %}

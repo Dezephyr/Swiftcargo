@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — SwiftCargo Admin{% endblock %}
+
+{% block content %}
+
+<section class="section" style="padding-top: 48px;">
+
+    <div class="admin-header">
+        <div>
+            <h1 style="font-size: 28px; margin-bottom: 6px;">Shipments</h1>
+            <p class="subtitle" style="margin-bottom: 0;">
+                {{ shipments | length }} shipment{{ '' if shipments|length == 1 else 's' }} on record
+            </p>
+        </div>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_create') }}" class="btn btn-solid">+ New shipment</a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">View site</a>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-secondary">Log out</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    {% if not shipments %}
+        <div class="empty-state">
+            <strong style="color: var(--text); font-size: 15px;">No shipments yet.</strong><br>
+            Click <strong>+ New shipment</strong> above to create your first one.
+        </div>
+    {% else %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Tracking ID</th>
+                    <th>Recipient</th>
+                    <th>Route</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in shipments %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin_shipment', shipment_id=s.id) }}">
+                            <code>{{ s.tracking_id }}</code>
+                        </a>
+                    </td>
+                    <td>{{ s.recipient_name }}</td>
+                    <td>{{ s.origin }} <span style="color: var(--text-dimmer);">→</span> {{ s.destination }}</td>
+                    <td>
+                        <span class="status-badge status-{{ s.status | lower | replace(' ', '-') }}">
+                            {{ s.status }}
+                        </span>
+                    </td>
+                    <td style="color: var(--text-dim); font-size: 13px;">
+                        {{ s.created_at.strftime("%Y-%m-%d %H:%M") }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+</section>
+
+{% endblock %}

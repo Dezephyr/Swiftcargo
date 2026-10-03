@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Create Shipment — SwiftCargo Admin{% endblock %}
+
+{% block content %}
+
+<section class="section" style="max-width: 820px; padding-top: 48px;">
+
+    <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Dashboard</a>
+
+    <h1 style="font-size: 28px; margin-bottom: 6px;">Create shipment</h1>
+    <p class="subtitle">Fill in the details. A tracking ID is generated automatically and the recipient gets an email.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form class="track-form" method="POST" action="{{ url_for('admin_create') }}" enctype="multipart/form-data">
+
+        <div class="form-grid">
+            <label>
+                Sender name *
+                <input type="text" name="sender_name" required>
+            </label>
+            <label>
+                Recipient name *
+                <input type="text" name="recipient_name" required>
+            </label>
+            <label>
+                Recipient email *
+                <input type="email" name="recipient_email" required>
+            </label>
+            <label>
+                Origin *
+                <input type="text" name="origin" placeholder="e.g. Lagos, Nigeria" required>
+            </label>
+            <label>
+                Destination *
+                <input type="text" name="destination" placeholder="e.g. Abuja, Nigeria" required>
+            </label>
+            <label>
+                Status
+                <select name="status">
+                    <option>Pending</option>
+                    <option>In Transit</option>
+                    <option>Out for Delivery</option>
+                    <option>Delivered</option>
+                </select>
+            </label>
+        </div>
+
+        <p class="muted" style="font-size: 12.5px; margin-top: -6px;">
+            Origin and destination are automatically located on the map from the city name.
+        </p>
+
+        <label>
+            Description
+            <textarea name="description" rows="3" placeholder="Package contents, weight, notes…"></textarea>
+        </label>
+
+        <label>
+            Video (max 100 MB — mp4, mov, webm, avi, or mkv)
+            <input type="file" name="video" accept="video/*">
+        </label>
+
+        <button type="submit">Create shipment</button>
+
+    </form>
+
+</section>
+
+{% endblock %}

@@ -1,0 +1,21 @@
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Environment variables (SECRETS — never commit)
+.env
+
+# Database
+shipment.db
+
+# Uploads (user-generated content)
+uploads/*
+!uploads/.gitkeep
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

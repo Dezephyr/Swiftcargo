@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ shipment.tracking_id }} — Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="container wide">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">← Dashboard</a>
+        <h1>{{ shipment.tracking_id }}</h1>
+        <p class="subtitle">{{ shipment.origin }} → {{ shipment.destination }}</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="details">
+            <div><strong>Sender:</strong> {{ shipment.sender_name }}</div>
+            <div><strong>Recipient:</strong> {{ shipment.recipient_name }} ({{ shipment.recipient_email }})</div>
+            <div><strong>Description:</strong> {{ shipment.description or "—" }}</div>
+            <div><strong>Status:</strong> {{ shipment.status }}</div>
+            <div><strong>Current location:</strong> {{ shipment.current_location_label or "—" }}</div>
+            <div><strong>Coordinates:</strong>
+                {% if shipment.current_lat and shipment.current_lng %}
+                    {{ shipment.current_lat }}, {{ shipment.current_lng }}
+                {% else %}—{% endif %}
+            </div>
+        </div>
+
+       {% if shipment.video_filename %}
+    <h2>Video</h2>
+    <video controls class="shipment-video">
+        <source src="{{ url_for('uploaded_file', filename=shipment.video_filename) }}">
+    </video>
+{% endif %}
+
+        <h2>Add tracking event</h2>
+        <form class="track-form" method="POST" action="{{ url_for('admin_add_event', shipment_id=shipment.id) }}">
+            <div class="form-grid">
+                <label>
+                    Status *
+                    <select name="status" required>
+                        <option>Pending</option>
+                        <option>In Transit</option>
+                        <option>Out for Delivery</option>
+                        <option>Delivered</option>
+                    </select>
+                </label>
+                <label>
+                    Location
+                    <input type="text" name="location" placeholder="City, Country">
+                </label>
+                <label>
+                    Latitude
+                    <input type="text" name="lat" placeholder="e.g. 6.5244">
+                </label>
+                <label>
+                    Longitude
+                    <input type="text" name="lng" placeholder="e.g. 3.3792">
+                </label>
+            </div>
+            <label>
+                Note
+                <textarea name="note" rows="2" placeholder="Optional note"></textarea>
+            </label>
+            <button type="submit">Add event</button>
+        </form>
+
+        <h2>History</h2>
+        {% if shipment.events %}
+            <ul class="timeline">
+                {% for event in shipment.events %}
+                    <li>
+                        <div class="event-status">{{ event.status }}</div>
+                        <div class="event-meta">
+                            {{ event.location or "—" }} • {{ event.timestamp.strftime("%Y-%m-%d %H:%M") }}
+                        </div>
+                        {% if event.note %}<div class="event-note">{{ event.note }}</div>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty-state">No events yet.</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('admin_delete_shipment', shipment_id=shipment.id) }}"
+              onsubmit="return confirm('Delete this shipment permanently?');" style="margin-top:24px;">
+            <button type="submit" class="btn-danger">Delete shipment</button>
+        </form>
+    </main>
+</body>
+</html>

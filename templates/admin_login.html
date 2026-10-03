@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — SwiftCargo{% endblock %}
+
+{% block content %}
+
+<section class="section" style="max-width: 440px; padding-top: 80px;">
+    <div style="text-align: center; margin-bottom: 28px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center;
+                    width: 56px; height: 56px; border-radius: 14px;
+                    background: linear-gradient(135deg, var(--accent-bright), var(--accent-deep));
+                    color: #001018; font-weight: 900; font-size: 26px;
+                    box-shadow: 0 8px 28px var(--accent-glow); margin-bottom: 18px;">
+            S
+        </div>
+        <h1 style="font-size: 26px; margin-bottom: 6px;">Admin sign-in</h1>
+        <p class="subtitle" style="margin-bottom: 0;">Restricted access — SwiftCargo operators only.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form class="track-form" method="POST" action="{{ url_for('admin_login') }}">
+        <label>
+            Password
+            <input type="password" name="password" placeholder="Enter admin password" required autofocus autocomplete="current-password">
+        </label>
+        <button type="submit">Sign in</button>
+    </form>
+
+    <p class="muted" style="text-align: center; margin-top: 22px; font-size: 12.5px;">
+        Sessions are signed and reset when you close your browser.
+    </p>
+</section>
+
+{% endblock %}
